@@ -1,0 +1,52 @@
+name: Windows Installer
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+    paths:
+      - 'enklayve-app/**'
+      - '.github/workflows/windows-installer.yml'
+
+jobs:
+  build-windows-installer:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: enklayve-app/package-lock.json
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        working-directory: enklayve-app
+        run: npm ci
+
+      - name: Build Tauri app (Windows)
+        working-directory: enklayve-app
+        run: npm run tauri build
+
+      - name: Upload NSIS installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: enklayve-windows-nsis
+          path: enklayve-app/src-tauri/target/release/bundle/nsis/*.exe
+          if-no-files-found: error
+
+      - name: Upload MSI installer (if available)
+        uses: actions/upload-artifact@v4
+        with:
+          name: enklayve-windows-msi
+          path: enklayve-app/src-tauri/target/release/bundle/msi/*.msi
+          if-no-files-found: ignore
